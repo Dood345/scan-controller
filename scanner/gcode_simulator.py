@@ -4,26 +4,33 @@ from typing import Sequence, Any
 from scanner.plugin_setting import PluginSettingString, PluginSettingInteger
 from scanner.motion_controller import MotionControllerPlugin
 
-import serial   # type: ignore
+import zmq
+
+
+
+DEFAULT_PORT = 5556
+
 
 class GcodeSimulator(MotionControllerPlugin):
-    address: PluginSettingString
+    port: PluginSettingInteger
     number_of_axes: PluginSettingInteger
+    
+    _socket: zmq.Socket
 
     axis_names = ("X", "Y", "Z", "W")
 
     def __init__(self) -> None:
-        self.address = PluginSettingString("Address", "COM11", select_options=["COM11", "COM12", "COM13"], restrict_selections=True)
+        self.port = PluginSettingInteger("Port Number", DEFAULT_PORT)
         self.number_of_axes = PluginSettingInteger("Number of Axes", 0, read_only=True)
         super().__init__()
-        self.add_setting_pre_connect(self.address)
+        self.add_setting_pre_connect(self.port)
         self.add_setting_post_connect(self.number_of_axes)
     
     def write_line(self, line: str) -> None:
-        self.port.write(f"{line}\n".encode())
+        self._socket.send_string(f"{line}\n")
 
     def read_line(self) -> str:
-        return self.port.readline().decode().strip()
+        return self._socket.recv_string()
 
     def format_axis_command(self, command: str, axis_vals: dict[int, float]) -> str:
         return f"{command} " + " ".join(f"{self.axis_names[axis]}{vel}" for axis,vel in axis_vals.items())
@@ -34,13 +41,16 @@ class GcodeSimulator(MotionControllerPlugin):
         return return_code
 
     def connect(self) -> None:
-        self.port = serial.Serial(self.address.value, timeout=0.2, write_timeout=0.2)
+        self._context = zmq.Context()
+        self._socket = self._context.socket(zmq.PAIR)
+        self._socket.connect(f"tcp://localhost:{self.port.value}")
+        
         self.get_current_positions()
         self.number_of_axes.value = 4
 
     def disconnect(self) -> None:
         self.number_of_axes.value = 0
-        self.port.close()
+        # self.port.close()
 
     def get_axis_display_names(self) -> tuple[str, ...]:
         return self.axis_names
