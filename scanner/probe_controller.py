@@ -1,9 +1,7 @@
-
 from abc import ABC, abstractmethod
 from typing import Sequence, Any
 
 from scanner.plugin_setting import PluginSetting
-
 
 class ProbePlugin(ABC):
     settings_pre_connect: list[PluginSetting]
@@ -51,8 +49,6 @@ class ProbePlugin(ABC):
     @abstractmethod
     def scan_end(self) -> None:
         pass
-        
-
 
 class ProbeController:
     _probe: ProbePlugin

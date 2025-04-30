@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1120</width>
-    <height>623</height>
+    <width>1094</width>
+    <height>618</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -20,62 +20,194 @@
    <bool>true</bool>
   </property>
   <property name="tabShape">
-   <enum>QTabWidget::Triangular</enum>
+   <enum>QTabWidget::TabShape::Triangular</enum>
   </property>
   <widget class="QWidget" name="central_widget">
    <widget class="QWidget" name="gridLayoutWidget_6">
     <property name="geometry">
      <rect>
-      <x>20</x>
+      <x>10</x>
       <y>10</y>
-      <width>1041</width>
-      <height>551</height>
+      <width>1061</width>
+      <height>561</height>
      </rect>
     </property>
-    <layout class="QGridLayout" name="main_layout">
+    <layout class="QGridLayout" name="main_layout" rowstretch="3,0,0,0,2" columnstretch="1,1,0,2,2,0,4">
      <property name="sizeConstraint">
-      <enum>QLayout::SetDefaultConstraint</enum>
+      <enum>QLayout::SizeConstraint::SetDefaultConstraint</enum>
      </property>
-     <item row="2" column="4">
-      <layout class="QFormLayout" name="config_layout"/>
+     <item row="4" column="2">
+      <widget class="Line" name="line_3">
+       <property name="orientation">
+        <enum>Qt::Orientation::Vertical</enum>
+       </property>
+      </widget>
      </item>
-     <item row="2" column="0">
-      <layout class="QGridLayout" name="diplay_layout">
+     <item row="0" column="6">
+      <layout class="QGridLayout" name="scan_layout" columnstretch="0,0">
+       <property name="sizeConstraint">
+        <enum>QLayout::SizeConstraint::SetMinimumSize</enum>
+       </property>
+       <property name="minimumSize" stdset="0">
+        <size>
+         <width>500</width>
+         <height>200</height>
+        </size>
+       </property>
+       <property name="spacing">
+        <number>6</number>
+       </property>
+       <item row="2" column="1">
+        <widget class="QLineEdit" name="time_elapsed_box">
+         <property name="enabled">
+          <bool>true</bool>
+         </property>
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="minimumSize">
+          <size>
+           <width>100</width>
+           <height>0</height>
+          </size>
+         </property>
+         <property name="readOnly">
+          <bool>true</bool>
+         </property>
+        </widget>
+       </item>
+       <item row="4" column="0">
+        <widget class="QLabel" name="time_remaining_label">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="text">
+          <string>Time Remaining</string>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="0">
+        <widget class="QPushButton" name="start_scan_button">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="text">
+          <string>Start Scan</string>
+         </property>
+        </widget>
+       </item>
+       <item row="4" column="1">
+        <widget class="QLineEdit" name="time_remaining_box">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="minimumSize">
+          <size>
+           <width>100</width>
+           <height>0</height>
+          </size>
+         </property>
+         <property name="readOnly">
+          <bool>true</bool>
+         </property>
+        </widget>
+       </item>
        <item row="0" column="1">
-        <widget class="QAxisPositionSlider" name="y_axis_slider">
-         <property name="minimum">
-          <number>-100</number>
+        <widget class="QTextEdit" name="scan_description_box">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
          </property>
-         <property name="maximum">
-          <number>100</number>
+         <property name="minimumSize">
+          <size>
+           <width>200</width>
+           <height>50</height>
+          </size>
          </property>
-         <property name="orientation">
-          <enum>Qt::Vertical</enum>
+        </widget>
+       </item>
+       <item row="1" column="1">
+        <widget class="QProgressBar" name="scan_progress_bar">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
          </property>
-         <property name="tickPosition">
-          <enum>QSlider::TicksAbove</enum>
+         <property name="maximumSize">
+          <size>
+           <width>300</width>
+           <height>16777215</height>
+          </size>
          </property>
-         <property name="tickInterval">
-          <number>50000</number>
+         <property name="value">
+          <number>50</number>
+         </property>
+        </widget>
+       </item>
+       <item row="2" column="0">
+        <widget class="QLabel" name="time_elapsed_label">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="text">
+          <string>Time Elapsed</string>
          </property>
         </widget>
        </item>
        <item row="1" column="0">
-        <widget class="QAxisPositionSlider" name="x_axis_slider">
+        <widget class="QPushButton" name="pause_scan_button">
+         <property name="text">
+          <string>Pause</string>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </item>
+     <item row="0" column="1">
+      <layout class="QGridLayout" name="z_move_layout">
+       <property name="minimumSize" stdset="0">
+        <size>
+         <width>150</width>
+         <height>200</height>
+        </size>
+       </property>
+       <item row="1" column="1" rowspan="3">
+        <widget class="QSlider" name="z_axis_slider">
+         <property name="minimumSize">
+          <size>
+           <width>20</width>
+           <height>80</height>
+          </size>
+         </property>
          <property name="minimum">
-          <number>-100</number>
+          <number>-300</number>
          </property>
          <property name="maximum">
-          <number>100</number>
+          <number>300</number>
          </property>
          <property name="orientation">
-          <enum>Qt::Horizontal</enum>
-         </property>
-         <property name="invertedAppearance">
-          <bool>false</bool>
+          <enum>Qt::Orientation::Vertical</enum>
          </property>
          <property name="tickPosition">
-          <enum>QSlider::TicksAbove</enum>
+          <enum>QSlider::TickPosition::TicksAbove</enum>
          </property>
          <property name="tickInterval">
           <number>50000</number>
@@ -83,28 +215,130 @@
         </widget>
        </item>
        <item row="0" column="0">
-        <widget class="QWidget" name="xy_canvas" native="true"/>
+        <widget class="QComboBox" name="z_axis_select">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="minimumSize">
+          <size>
+           <width>80</width>
+           <height>0</height>
+          </size>
+         </property>
+        </widget>
+       </item>
+       <item row="2" column="0">
+        <widget class="QDoubleSpinBox" name="z_move_amount">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="minimumSize">
+          <size>
+           <width>10</width>
+           <height>20</height>
+          </size>
+         </property>
+         <property name="maximumSize">
+          <size>
+           <width>80</width>
+           <height>16777215</height>
+          </size>
+         </property>
+         <property name="decimals">
+          <number>5</number>
+         </property>
+         <property name="minimum">
+          <double>-100000000000000000.000000000000000</double>
+         </property>
+         <property name="maximum">
+          <double>100000000000000000.000000000000000</double>
+         </property>
+         <property name="value">
+          <double>10.000000000000000</double>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="0">
+        <widget class="QPushButton" name="z_plus_button">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="maximumSize">
+          <size>
+           <width>80</width>
+           <height>16777215</height>
+          </size>
+         </property>
+         <property name="text">
+          <string>Z+</string>
+         </property>
+        </widget>
+       </item>
+       <item row="3" column="0">
+        <widget class="QPushButton" name="z_minus_button">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="maximumSize">
+          <size>
+           <width>80</width>
+           <height>16777215</height>
+          </size>
+         </property>
+         <property name="text">
+          <string>Z-</string>
+         </property>
+        </widget>
+       </item>
+       <item row="4" column="0">
+        <widget class="QPushButton" name="home_z_button">
+         <property name="maximumSize">
+          <size>
+           <width>80</width>
+           <height>16777215</height>
+          </size>
+         </property>
+         <property name="text">
+          <string>Z Home</string>
+         </property>
+        </widget>
        </item>
       </layout>
      </item>
      <item row="0" column="0">
       <layout class="QGridLayout" name="xy_move_layout">
-       <item row="1" column="2">
-        <widget class="QPushButton" name="x_plus_button">
-         <property name="text">
-          <string>X+</string>
-         </property>
-        </widget>
-       </item>
-       <item row="0" column="1">
-        <widget class="QPushButton" name="y_plus_button">
-         <property name="text">
-          <string>Y+</string>
-         </property>
-        </widget>
-       </item>
+       <property name="minimumSize" stdset="0">
+        <size>
+         <width>350</width>
+         <height>200</height>
+        </size>
+       </property>
        <item row="2" column="1">
         <widget class="QPushButton" name="y_minus_button">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="maximumSize">
+          <size>
+           <width>80</width>
+           <height>16777215</height>
+          </size>
+         </property>
          <property name="text">
           <string>Y-</string>
          </property>
@@ -112,6 +346,27 @@
        </item>
        <item row="1" column="1">
         <widget class="QDoubleSpinBox" name="xy_move_amount">
+         <property name="enabled">
+          <bool>true</bool>
+         </property>
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="minimumSize">
+          <size>
+           <width>10</width>
+           <height>20</height>
+          </size>
+         </property>
+         <property name="maximumSize">
+          <size>
+           <width>80</width>
+           <height>16777215</height>
+          </size>
+         </property>
          <property name="decimals">
           <number>5</number>
          </property>
@@ -126,8 +381,78 @@
          </property>
         </widget>
        </item>
+       <item row="2" column="2">
+        <widget class="QPushButton" name="home_y_button">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="maximumSize">
+          <size>
+           <width>80</width>
+           <height>16777215</height>
+          </size>
+         </property>
+         <property name="text">
+          <string>Y Home</string>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="1">
+        <widget class="QPushButton" name="y_plus_button">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="maximumSize">
+          <size>
+           <width>80</width>
+           <height>16777215</height>
+          </size>
+         </property>
+         <property name="text">
+          <string>Y+</string>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="2">
+        <widget class="QPushButton" name="x_plus_button">
+         <property name="maximumSize">
+          <size>
+           <width>80</width>
+           <height>16777215</height>
+          </size>
+         </property>
+         <property name="text">
+          <string>X+</string>
+         </property>
+        </widget>
+       </item>
+       <item row="2" column="0">
+        <widget class="QPushButton" name="home_x_button">
+         <property name="maximumSize">
+          <size>
+           <width>80</width>
+           <height>16777215</height>
+          </size>
+         </property>
+         <property name="text">
+          <string>X Home</string>
+         </property>
+        </widget>
+       </item>
        <item row="1" column="0">
         <widget class="QPushButton" name="x_minus_button">
+         <property name="maximumSize">
+          <size>
+           <width>80</width>
+           <height>16777215</height>
+          </size>
+         </property>
          <property name="text">
           <string>X-</string>
          </property>
@@ -135,8 +460,82 @@
        </item>
       </layout>
      </item>
-     <item row="2" column="2">
+     <item row="3" column="1">
+      <widget class="Line" name="line_7">
+       <property name="orientation">
+        <enum>Qt::Orientation::Horizontal</enum>
+       </property>
+      </widget>
+     </item>
+     <item row="4" column="5">
+      <widget class="Line" name="line_4">
+       <property name="orientation">
+        <enum>Qt::Orientation::Vertical</enum>
+       </property>
+      </widget>
+     </item>
+     <item row="3" column="3" colspan="2">
+      <widget class="Line" name="line_6">
+       <property name="orientation">
+        <enum>Qt::Orientation::Horizontal</enum>
+       </property>
+      </widget>
+     </item>
+     <item row="3" column="6">
+      <widget class="Line" name="line_8">
+       <property name="orientation">
+        <enum>Qt::Orientation::Horizontal</enum>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="2">
+      <widget class="Line" name="line_2">
+       <property name="orientation">
+        <enum>Qt::Orientation::Vertical</enum>
+       </property>
+      </widget>
+     </item>
+     <item row="3" column="0">
+      <widget class="Line" name="line">
+       <property name="orientation">
+        <enum>Qt::Orientation::Horizontal</enum>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="5">
+      <widget class="Line" name="line_5">
+       <property name="orientation">
+        <enum>Qt::Orientation::Vertical</enum>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="3" colspan="2">
+      <widget class="QWidget" name="data_visualization" native="true">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="minimumSize">
+        <size>
+         <width>150</width>
+         <height>100</height>
+        </size>
+       </property>
+      </widget>
+     </item>
+     <item row="4" column="3" colspan="2">
+      <widget class="QWidget" name="config_layout" native="true"/>
+     </item>
+     <item row="4" column="0" colspan="2">
       <layout class="QGridLayout" name="settings_layout">
+       <property name="minimumSize" stdset="0">
+        <size>
+         <width>150</width>
+         <height>400</height>
+        </size>
+       </property>
        <item row="3" column="2">
         <widget class="QPushButton" name="configure_file_button">
          <property name="text">
@@ -149,6 +548,18 @@
        </item>
        <item row="0" column="0">
         <widget class="QLabel" name="configure_motion_label">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="minimumSize">
+          <size>
+           <width>80</width>
+           <height>30</height>
+          </size>
+         </property>
          <property name="text">
           <string>Motion Control</string>
          </property>
@@ -156,6 +567,12 @@
        </item>
        <item row="0" column="2">
         <widget class="QPushButton" name="configure_motion_button">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
          <property name="text">
           <string>Configure</string>
          </property>
@@ -166,6 +583,15 @@
        </item>
        <item row="3" column="0">
         <widget class="QLabel" name="configure_file_label">
+         <property name="minimumSize">
+          <size>
+           <width>80</width>
+           <height>30</height>
+          </size>
+         </property>
+         <property name="layoutDirection">
+          <enum>Qt::LayoutDirection::LeftToRight</enum>
+         </property>
          <property name="text">
           <string>Scan File</string>
          </property>
@@ -173,6 +599,12 @@
        </item>
        <item row="1" column="0">
         <widget class="QLabel" name="configure_probe_label">
+         <property name="minimumSize">
+          <size>
+           <width>80</width>
+           <height>30</height>
+          </size>
+         </property>
          <property name="text">
           <string>Probe</string>
          </property>
@@ -180,6 +612,12 @@
        </item>
        <item row="2" column="0">
         <widget class="QLabel" name="configure_pattern_label">
+         <property name="minimumSize">
+          <size>
+           <width>80</width>
+           <height>30</height>
+          </size>
+         </property>
          <property name="text">
           <string>Scan Pattern</string>
          </property>
@@ -217,6 +655,12 @@
        </item>
        <item row="0" column="1">
         <widget class="QCheckBox" name="motion_connected_checkbox">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
          <property name="text">
           <string>Connected</string>
          </property>
@@ -227,162 +671,8 @@
        </item>
       </layout>
      </item>
-     <item row="2" column="1">
-      <widget class="Line" name="line_3">
-       <property name="orientation">
-        <enum>Qt::Vertical</enum>
-       </property>
-      </widget>
-     </item>
-     <item row="0" column="1">
-      <widget class="Line" name="line_2">
-       <property name="orientation">
-        <enum>Qt::Vertical</enum>
-       </property>
-      </widget>
-     </item>
-     <item row="0" column="4">
-      <layout class="QGridLayout" name="scan_layout">
-       <item row="0" column="1">
-        <widget class="QTextEdit" name="scan_description_box"/>
-       </item>
-       <item row="4" column="0">
-        <widget class="QLabel" name="time_remaining_label">
-         <property name="text">
-          <string>Time Remaining</string>
-         </property>
-        </widget>
-       </item>
-       <item row="0" column="0">
-        <widget class="QPushButton" name="start_scan_button">
-         <property name="text">
-          <string>Start Scan</string>
-         </property>
-        </widget>
-       </item>
-       <item row="2" column="0">
-        <widget class="QLabel" name="time_elapsed_label">
-         <property name="text">
-          <string>Time Elapsed</string>
-         </property>
-        </widget>
-       </item>
-       <item row="2" column="1">
-        <widget class="QLineEdit" name="time_elapsed_box">
-         <property name="enabled">
-          <bool>true</bool>
-         </property>
-         <property name="readOnly">
-          <bool>true</bool>
-         </property>
-        </widget>
-       </item>
-       <item row="4" column="1">
-        <widget class="QLineEdit" name="time_remaining_box">
-         <property name="readOnly">
-          <bool>true</bool>
-         </property>
-        </widget>
-       </item>
-       <item row="1" column="0" colspan="2">
-        <widget class="QProgressBar" name="scan_progress_bar">
-         <property name="value">
-          <number>50</number>
-         </property>
-        </widget>
-       </item>
-      </layout>
-     </item>
-     <item row="0" column="2">
-      <layout class="QGridLayout" name="z_move_layout">
-       <item row="1" column="0">
-        <widget class="QPushButton" name="z_plus_button">
-         <property name="text">
-          <string>Z+</string>
-         </property>
-        </widget>
-       </item>
-       <item row="3" column="0">
-        <widget class="QPushButton" name="z_minus_button">
-         <property name="text">
-          <string>Z-</string>
-         </property>
-        </widget>
-       </item>
-       <item row="2" column="0">
-        <widget class="QDoubleSpinBox" name="z_move_amount">
-         <property name="decimals">
-          <number>5</number>
-         </property>
-         <property name="minimum">
-          <double>-100000000000000000.000000000000000</double>
-         </property>
-         <property name="maximum">
-          <double>100000000000000000.000000000000000</double>
-         </property>
-         <property name="value">
-          <double>10.000000000000000</double>
-         </property>
-        </widget>
-       </item>
-       <item row="0" column="0">
-        <widget class="QComboBox" name="z_axis_select"/>
-       </item>
-       <item row="1" column="1" rowspan="3">
-        <widget class="QAxisPositionSlider" name="z_axis_slider">
-         <property name="minimum">
-          <number>-100</number>
-         </property>
-         <property name="maximum">
-          <number>100</number>
-         </property>
-         <property name="orientation">
-          <enum>Qt::Vertical</enum>
-         </property>
-         <property name="tickPosition">
-          <enum>QSlider::TicksAbove</enum>
-         </property>
-         <property name="tickInterval">
-          <number>50000</number>
-         </property>
-        </widget>
-       </item>
-      </layout>
-     </item>
-     <item row="2" column="3">
-      <widget class="Line" name="line_4">
-       <property name="orientation">
-        <enum>Qt::Vertical</enum>
-       </property>
-      </widget>
-     </item>
-     <item row="0" column="3">
-      <widget class="Line" name="line_5">
-       <property name="orientation">
-        <enum>Qt::Vertical</enum>
-       </property>
-      </widget>
-     </item>
-     <item row="1" column="2">
-      <widget class="Line" name="line_6">
-       <property name="orientation">
-        <enum>Qt::Horizontal</enum>
-       </property>
-      </widget>
-     </item>
-     <item row="1" column="0">
-      <widget class="Line" name="line">
-       <property name="orientation">
-        <enum>Qt::Horizontal</enum>
-       </property>
-      </widget>
-     </item>
-     <item row="1" column="4">
-      <widget class="Line" name="line_8">
-       <property name="orientation">
-        <enum>Qt::Horizontal</enum>
-       </property>
-      </widget>
+     <item row="4" column="6">
+      <widget class="QWidget" name="scan_table_graph" native="true"/>
      </item>
     </layout>
    </widget>
@@ -392,20 +682,13 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>1120</width>
+     <width>1094</width>
      <height>22</height>
     </rect>
    </property>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
  </widget>
- <customwidgets>
-  <customwidget>
-   <class>QAxisPositionSlider</class>
-   <extends>QSlider</extends>
-   <header>gui.qt_util</header>
-  </customwidget>
- </customwidgets>
  <resources/>
  <connections/>
 </ui>

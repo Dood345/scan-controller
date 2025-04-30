@@ -1,4 +1,3 @@
-
 from abc import ABC, abstractmethod
 
 class PluginSetting(ABC):
@@ -22,8 +21,6 @@ class PluginSetting(ABC):
     
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}('{self.display_label}', '{self.get_value_as_string()}')"
-
-
 
 
 class PluginSettingString(PluginSetting):
@@ -135,5 +132,3 @@ class PluginSettingFloat(PluginSetting):
     @property
     def value_max(self) -> float | None:
         return self._value_max
-
-

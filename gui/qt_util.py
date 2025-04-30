@@ -1,4 +1,3 @@
-
 from functools import wraps
 import math
 
@@ -88,11 +87,3 @@ class QAxisPositionSlider(QSlider):
     def setMaximum(self, max_value: float) -> None:
         self.endstop_maximum = max_value
         self.setSliderPosition(self.current_value)
-
-
-
-
-
-
-
-
