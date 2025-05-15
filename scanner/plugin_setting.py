@@ -22,7 +22,6 @@ class PluginSetting(ABC):
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}('{self.display_label}', '{self.get_value_as_string()}')"
 
-
 class PluginSettingString(PluginSetting):
     _value: str
     selection_options: list[str]
@@ -52,7 +51,6 @@ class PluginSettingString(PluginSetting):
         if self.restrict_selections and value not in self.selection_options:
             raise ValueError(f"Value must be one of {self.selection_options}.")
         self._value = value
-
 
 class PluginSettingInteger(PluginSetting):
     _value: int

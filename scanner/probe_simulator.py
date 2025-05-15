@@ -56,19 +56,15 @@ class ProbeSimulator(ProbePlugin):
         time.sleep(self.measure_time.value)
         num_channels = self.num_channels.value
         num_points = self.num_points_per_channel.value
-        x, y = scan_location  # Extract x and y coordinates
+        x, y = scan_location 
         
         ret: list[list[float]] = []
         for c_ind in range(num_channels):
-            # Introduce a phase shift based on x and y coordinates
-            phase_shift = (x + y) / 50.0  # Scale the shift to a reasonable range
+            phase_shift = (x + y) / 50.0  
             if c_ind == 0:
-                # Channel 1: Shift based on x
                 phase = phase_shift * math.pi
             else:
-                # Channel 2: Shift based on y
                 phase = -phase_shift * math.pi
-            # Generate data with a cosine function, shifted by the phase
             channel_data = [
                 math.cos(c_ind * p_ind / (num_points - 1) * (2 * math.pi) + phase)
                 for p_ind in range(num_points)

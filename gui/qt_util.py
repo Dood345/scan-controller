@@ -7,7 +7,6 @@ from PySide6.QtCore import Qt, Slot
 
 from scanner.plugin_setting import PluginSetting, PluginSettingString
 
-
 class QPluginSetting(QLineEdit):
     _setting: PluginSetting
     _style_no_error: str
@@ -44,8 +43,6 @@ class QPluginSetting(QLineEdit):
             self.completer().setCompletionPrefix("")
             self.completer().complete()
         return super().focusInEvent(event)
-
-
 
 class QAxisPositionSlider(QSlider):
     _SLIDER_RESOLUTION: int = 1000000

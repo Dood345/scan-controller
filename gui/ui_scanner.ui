@@ -512,15 +512,15 @@
      <item row="0" column="3" colspan="2">
       <widget class="QWidget" name="data_visualization" native="true">
        <property name="sizePolicy">
-        <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
+        <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
          <horstretch>0</horstretch>
          <verstretch>0</verstretch>
         </sizepolicy>
        </property>
        <property name="minimumSize">
         <size>
-         <width>150</width>
-         <height>100</height>
+         <width>250</width>
+         <height>250</height>
         </size>
        </property>
       </widget>

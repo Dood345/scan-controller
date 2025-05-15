@@ -9,7 +9,7 @@ import math
 import threading
 
 DEFAULT_PORT = 5556
-DEFAULT_VELOCITY = 25.0  # Add a standard velocity
+DEFAULT_VELOCITY = 25.0 
 
 class GcodeSimulator(MotionControllerPlugin):
     port: PluginSettingInteger
@@ -40,7 +40,7 @@ class GcodeSimulator(MotionControllerPlugin):
         with self._socket_lock:
             self._socket.send_string(f"{line}\n", flags=zmq.DONTWAIT)
 
-    def read_line(self, timeout_ms: int = 500) -> str:  # Increased timeout
+    def read_line(self, timeout_ms: int = 500) -> str:  
         with self._socket_lock:
             if self._socket.poll(timeout_ms, zmq.POLLIN):
                 return self._socket.recv_string()
@@ -49,7 +49,6 @@ class GcodeSimulator(MotionControllerPlugin):
     def _update_motion(self):
         if self._is_moving:
             elapsed = time.time() - self._last_move_time
-            # Use standard velocity-based timing calculation
             if elapsed < self._move_duration:
                 fraction = min(1.0, elapsed / self._move_duration)
                 positions = {
@@ -114,6 +113,9 @@ class GcodeSimulator(MotionControllerPlugin):
         self.check_for_error(self.read_line())
 
     def move_relative(self, move_dist: dict[int, float]) -> dict[int, float] | None:
+        response = self._send_and_parse_position_query()
+        for axis, val in response.items():
+            self._current_positions[axis] = val
         total_distance = math.sqrt(sum(dist ** 2 for dist in move_dist.values()))
         self._move_duration = total_distance / self._velocity if self._velocity > 0 else 0.5
         self._move_duration = max(self._move_duration, 0.15)
@@ -125,6 +127,7 @@ class GcodeSimulator(MotionControllerPlugin):
             self._target_positions[axis] = new_pos
             new_positions[axis] = new_pos
 
+
         self._is_moving = True
         self._last_move_time = time.time()
         self.write_line(self.format_axis_command("G01", move_dist))
@@ -132,6 +135,10 @@ class GcodeSimulator(MotionControllerPlugin):
         return new_positions
 
     def move_absolute(self, move_pos: dict[int, float]) -> dict[int, float] | None:
+        response = self._send_and_parse_position_query()
+        for axis, val in response.items():
+            self._current_positions[axis] = val
+
         total_distance = math.sqrt(sum(
             (pos - self._current_positions[axis]) ** 2
             for axis, pos in move_pos.items()
@@ -141,7 +148,7 @@ class GcodeSimulator(MotionControllerPlugin):
         self._start_positions = self._current_positions.copy()
         self._last_move_time = now
         self._move_duration = total_distance / self._velocity if self._velocity > 0 else 0.5
-        self._move_duration = max(self._move_duration, 0.15)
+        self._move_duration = max(self._move_duration, 0.6)
         self._is_moving = True
 
         self._target_positions.update(move_pos)
@@ -157,8 +164,21 @@ class GcodeSimulator(MotionControllerPlugin):
         cmd = self.format_axis_command("G00", move_pos)
         self.write_line(cmd)
         self.check_for_error(self.read_line())
-        self._update_motion
+        self._update_motion()
         return move_pos
+    
+    def _send_and_parse_position_query(self) -> dict[int, float]:
+        """Synchronize internal state with external simulator via G00?"""
+        self.write_line("G00?")
+        raw = self.check_for_error(self.read_line())
+        values = {}
+        for val in raw.split():
+            axis_letter = val[0]
+            axis_value = float(val[1:])
+            if axis_letter in self.axis_names:
+                axis_index = self.axis_names.index(axis_letter)
+                values[axis_index] = axis_value
+        return values
 
     def home(self, axes: list[int]) -> dict[int, float]:
         home_positions = {axis: 0.0 for axis in axes}
@@ -166,6 +186,9 @@ class GcodeSimulator(MotionControllerPlugin):
         return home_positions
     
     def get_current_positions(self) -> tuple[float, ...]:
+        if hasattr(self, '_simulator_window'):
+            sim_pos = self._simulator_window.getCurrentPosition()
+            return tuple(sim_pos[axis] for axis in self.axis_names)
         return tuple(self._current_positions[i] for i in range(len(self._current_positions)))
 
     def get_target_positions(self) -> tuple[float, ...]:

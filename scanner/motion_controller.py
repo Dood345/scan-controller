@@ -81,10 +81,10 @@ class MotionDriverSimulated(MotionControllerPlugin):
     def __init__(self):
         super().__init__()
         self._connected = False
-        self._positions = [0.0, 0.0, 0.0]  # Current positions
-        self._target_positions = [0.0, 0.0, 0.0]  # Target positions
+        self._positions = [0.0, 0.0, 0.0]  
+        self._target_positions = [0.0, 0.0, 0.0] 
         self._moving = False
-        self._move_duration = 0.1  # Simulate a 0.1-second movement
+        self._move_duration = 0.1  
         self._move_start_time = 0
         self._axis_labels = ("X", "Y", "Z")
         self._axis_units = ("mm", "mm", "mm")
@@ -278,9 +278,10 @@ class MotionController:
         ret_positions = self._driver.move_absolute(axis_positions)
         if ret_positions is None:
             ret_positions = axis_positions
-        for ind, val in ret_positions.items():
-            if ind < len(self._target_positions): 
-                self._target_positions[ind] = val
+        if self._driver.is_moving():
+            for ind, val in ret_positions.items():
+                if ind < len(self._target_positions): 
+                    self._target_positions[ind] = val
         if not self._driver.is_moving():
             current_positions = self._driver.get_current_positions()
             for ind in range(len(self._target_positions)):
@@ -288,10 +289,16 @@ class MotionController:
                     self._target_positions[ind] = current_positions[ind]
 
     def move_relative(self, axis_offsets: dict[int, float]) -> None:
-        for axis, pos in enumerate(self._target_positions):
-            if axis in axis_offsets:
-                axis_offsets[axis] += pos
-        self.move_absolute(axis_offsets)
+        self.must_be_connected()
+        self.must_be_valid_index(axis_offsets.keys())
+
+        current_positions = self._driver.get_current_positions()
+        abs_positions = {
+            axis: current_positions[axis] + offset for axis, offset in axis_offsets.items()
+        }
+
+        self.move_absolute(abs_positions)
+
 
     def home(self, axes: list[int]) -> dict[int, float]:
         self.must_be_connected()

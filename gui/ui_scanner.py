@@ -300,9 +300,9 @@ class Ui_MainWindow(object):
 
         self.data_visualization = QWidget(self.gridLayoutWidget_6)
         self.data_visualization.setObjectName(u"data_visualization")
-        sizePolicy3.setHeightForWidth(self.data_visualization.sizePolicy().hasHeightForWidth())
-        self.data_visualization.setSizePolicy(sizePolicy3)
-        self.data_visualization.setMinimumSize(QSize(150, 100))
+        sizePolicy2.setHeightForWidth(self.data_visualization.sizePolicy().hasHeightForWidth())
+        self.data_visualization.setSizePolicy(sizePolicy2)
+        self.data_visualization.setMinimumSize(QSize(250, 250))
 
         self.main_layout.addWidget(self.data_visualization, 0, 3, 1, 2)
 

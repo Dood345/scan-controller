@@ -127,7 +127,7 @@ class ScanThread(QThread):
             self.scanner.motion_controller.move_absolute({0: 0, 1: 0})
             self.update_target.emit(0, 0)
             while self.scanner.motion_controller.is_moving():
-                QThread.msleep(10)
+                QThread.msleep(20)
             QThread.msleep(100)
 
             if self.start_position == "Center":
@@ -137,8 +137,8 @@ class ScanThread(QThread):
                 x_start = 0
                 y_start = 0
 
-            self.scanner.motion_controller.move_absolute({0: x_start, 1: y_start})
             self.update_target.emit(x_start, y_start)
+            self.scanner.motion_controller.move_absolute({0: x_start, 1: y_start})
             while self.scanner.motion_controller.is_moving():
                 QThread.msleep(10)
             QThread.msleep(100)
@@ -160,8 +160,9 @@ class ScanThread(QThread):
                     if self._stop:
                         return
 
-                    self.scanner.motion_controller.move_absolute({0: x, 1: y})
                     self.update_target.emit(x, y)
+                    self.scanner.motion_controller.move_absolute({0: x, 1: y})
+
                     while self.scanner.motion_controller.is_moving():
                         QThread.msleep(10)
 
@@ -190,7 +191,6 @@ class MainWindow(QMainWindow):
 
         self.drawPanelXY = PositionDrawer()
 
-        # Try using gridLayoutWidget_6 directly
         if hasattr(self.ui, 'gridLayoutWidget_6') and self.ui.gridLayoutWidget_6:
             self.ui.gridLayoutWidget_6.layout().addWidget(self.drawPanelXY)
         else:
@@ -200,7 +200,6 @@ class MainWindow(QMainWindow):
         self.ui.z_axis_slider.setMaximum(300)
         self.ui.z_axis_slider.setValue(0)
 
-        # Initialize attributes
         self.scan_order = PluginSettingString("Scan Order", "XY")
         self.x_dim = PluginSettingFloat("X Dimension (mm)", 50.0, value_max=600)
         self.y_dim = PluginSettingFloat("Y Dimension (mm)", 50.0, value_max=600)
@@ -221,7 +220,6 @@ class MainWindow(QMainWindow):
 
         self.scanner = ScannerQt()
         if hasattr(self.scanner.scanner.motion_controller, '_driver'):
-            # Configure to use standard GCode commands
             self.scanner.scanner.motion_controller._driver.command_map = {
                 'get_position': 'G00?',
                 'get_status': 'Status?',
@@ -239,10 +237,15 @@ class MainWindow(QMainWindow):
         self.plot_updater = PlotUpdater(self.update_table_plot)
         self.plot_updater.update_signal.connect(self._update_table_plot_handler)
         self.plot_updater.start()
+        
+        self.target_update_timer = QTimer()
+        self.target_update_timer.setInterval(10)  
+        self.target_update_timer.timeout.connect(self.update_target_plot)
+        self.pending_target = None
 
         self.position_timer = QTimer()
         self.position_timer.timeout.connect(self.update_motion_position)
-        self.position_timer.start(10)  
+        self.position_timer.start(20)  
 
         self.setup_connections()
 
@@ -269,10 +272,22 @@ class MainWindow(QMainWindow):
         self.config_scroll.setWidget(self.config_container)
 
     def setup_data_visualization(self):
-        self.data_canvas = FigureCanvas(Figure(figsize=(3, 2)))
+        self.data_canvas = FigureCanvas(Figure(figsize=(6, 4), dpi=100))
+        self.data_canvas.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.data_canvas.setMinimumSize(400, 300)  
+
+        if self.ui.data_visualization.layout():
+            QWidget().setLayout(self.ui.data_visualization.layout())  
+
         layout = QVBoxLayout(self.ui.data_visualization)
         layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
         layout.addWidget(self.data_canvas)
+        self.ui.data_visualization.setLayout(layout)
+
+        self.ui.main_layout.setColumnStretch(3, 2) 
+        self.ui.main_layout.setColumnStretch(4, 2)  
+        self.ui.main_layout.setRowStretch(0, 3)  
 
     def setup_scan_table_graph(self):
         if self.ui.scan_table_graph.layout():
@@ -328,7 +343,7 @@ class MainWindow(QMainWindow):
         self.scan_area_line, = self.ax.plot(rect_x, rect_y, 'r--', linewidth=1.5)
 
         self.current_pos_line, = self.ax.plot([], [], 'bo', markersize=5)
-        self.target_pos_line, = self.ax.plot([], [], 'ko', markersize=7, fillstyle='none', alpha=0.7)
+        self.target_pos_line, = self.ax.plot([], [], 'ko', markersize=8, fillstyle='none', alpha=0.7)
 
     def setup_connections(self):
         self.ui.xy_move_amount.valueChanged.connect(self.scanner.set_xy_move)
@@ -376,11 +391,11 @@ class MainWindow(QMainWindow):
                 self.ui.pause_scan_button.setText("Resume")
             self._scan_paused = not self._scan_paused
 
-
     @Slot()
     def debounce_plot_update(self):
         try:
             self.plot_update_pending = False
+            self.update_table_plot(0, initial=False)
             self.plot_updater.value = 0
             self.plot_updater.initial = False
         except Exception as e:
@@ -389,83 +404,49 @@ class MainWindow(QMainWindow):
     @Slot(bool, float, float, float)
     def handle_motion_update(self, is_moving, pos_x, pos_y, pos_z):
         try:
-            if self.last_positions == (pos_x, pos_y, pos_z) and self.is_moving_state == is_moving:
+            self.is_moving_state = is_moving
+            if self.last_positions == (pos_x, pos_y, pos_z):
                 return
             self.last_positions = (pos_x, pos_y, pos_z)
 
-            # Update the position in the PositionDrawer
-            self.drawPanelXY.currentX_norm = (pos_x + 300) / 600
-            self.drawPanelXY.currentY_norm = (1 - (pos_y + 300) / 600)
-            self.drawPanelXY.update()
+            new_x_norm = (pos_x + 300) / 600
+            new_y_norm = (1 - (pos_y + 300) / 600)
+            if (abs(new_x_norm - self.drawPanelXY.currentX_norm) > 1e-6 or
+                abs(new_y_norm - self.drawPanelXY.currentY_norm) > 1e-6):
+                self.drawPanelXY.currentX_norm = new_x_norm
+                self.drawPanelXY.currentY_norm = new_y_norm
+                self.drawPanelXY.update()
 
-            # Update the slider position for Z axis only if changed
             if self.ui.z_axis_slider.value() != int(pos_z):
                 self.ui.z_axis_slider.blockSignals(True)
                 self.ui.z_axis_slider.setValue(int(pos_z))
                 self.ui.z_axis_slider.blockSignals(False)
 
-            # Only update target if we're not moving
-            if not is_moving:
-                target_positions = self.scanner.scanner.motion_controller.get_target_positions()
-                target_x = target_positions[0] if len(target_positions) > 0 else 0
-                target_y = target_positions[1] if len(target_positions) > 1 else 0
-                self.target_position = (target_x, target_y)
+            target_positions = self.scanner.scanner.motion_controller.get_target_positions()
+            target_x = target_positions[0] if len(target_positions) > 0 else 0
+            target_y = target_positions[1] if len(target_positions) > 1 else 0
+            self.target_position = (target_x, target_y)
 
             self.update_table_plot(0, initial=False)
 
-        except (ConnectionError, TimeoutError, ValueError) as e:
+        except (ConnectionError, TimeoutError, ValueError):
             pass
-        except Exception as e:
+        except Exception:
             pass
+
 
     def handle_movement(self, movement_function):
         try:
-            # Ensure the motion controller is connected before moving
             if not self.scanner.scanner.motion_controller.is_connected():
                 raise ConnectionError("Motion controller not connected")
             
-            # Fetch current positions before moving
-            positions = self.scanner.scanner.motion_controller.get_current_positions()
-            if isinstance(positions, dict):
-                current_x = positions.get(0, 0)
-                current_y = positions.get(1, 0)
-                current_z = positions.get(2, 0)
-            else:
-                current_x, current_y, current_z = positions[:3] if len(positions) >= 3 else (0, 0, 0)
-            
-            # Determine the movement based on the button pressed
-            xy_move = self.ui.xy_move_amount.value()
-            z_move = self.ui.z_move_amount.value()
-            
-            if movement_function == self.scanner.clicked_move_x_plus:
-                target_x = current_x + xy_move
-                target_y = current_y
-                target_z = current_z
-            elif movement_function == self.scanner.clicked_move_x_minus:
-                target_x = current_x - xy_move
-                target_y = current_y
-                target_z = current_z
-            elif movement_function == self.scanner.clicked_move_y_plus:
-                target_x = current_x
-                target_y = current_y + xy_move
-                target_z = current_z
-            elif movement_function == self.scanner.clicked_move_y_minus:
-                target_x = current_x
-                target_y = current_y - xy_move
-                target_z = current_z
-            elif movement_function == self.scanner.clicked_move_z_plus:
-                target_x = current_x
-                target_y = current_y
-                target_z = current_z + z_move
-            elif movement_function == self.scanner.clicked_move_z_minus:
-                target_x = current_x
-                target_y = current_y
-                target_z = current_z - z_move
-            else:
-                target_x, target_y, target_z = current_x, current_y, current_z
-            
+            movement_function()  # Call the respective movement function first
+
+            target_positions = self.scanner.scanner.motion_controller.get_target_positions()
+            target_x = target_positions[0] if len(target_positions) > 0 else 0
+            target_y = target_positions[1] if len(target_positions) > 1 else 0
             self.target_position = (target_x, target_y)
-            movement_function()  # Call the respective movement function
+
             self.plot_updater.value = 0
             self.plot_updater.initial = False
         except (ConnectionError, TimeoutError, ValueError) as e:
@@ -480,10 +461,8 @@ class MainWindow(QMainWindow):
             
             z_pos = float(value)
             self.scanner.scanner.motion_controller.move_absolute({2: z_pos})
-            positions = self.scanner.scanner.motion_controller.get_current_positions()
-            current_x = positions[0] if len(positions) > 0 else 0
-            current_y = positions[1] if len(positions) > 1 else 0
-            self.target_position = (current_x, current_y)
+            target_positions = self.scanner.scanner.motion_controller.get_target_positions()
+            self.target_position = (target_positions[0], target_positions[1])
             self.plot_updater.value = 0
             self.plot_updater.initial = False
         except (ConnectionError, TimeoutError, ValueError) as e:
@@ -515,7 +494,6 @@ class MainWindow(QMainWindow):
                 
                 self.last_mouse_pos = current_pos
                 self.update_table_plot(0, initial=False)
-                self.table_canvas.draw()
         except Exception as e:
             pass
 
@@ -532,12 +510,11 @@ class MainWindow(QMainWindow):
         try:
             zoom_factor = 1.1
             if event.angleDelta().y() > 0:
-                self.zoom_level *= zoom_factor  # Zoom in
+                self.zoom_level *= zoom_factor 
             else:
-                self.zoom_level /= zoom_factor  # Zoom out
+                self.zoom_level /= zoom_factor  
             self.zoom_level = max(0.5, min(10.0, self.zoom_level))
             self.update_table_plot(0, initial=False)
-            self.table_canvas.draw()
             event.accept()
         except Exception as e:
             pass
@@ -581,7 +558,12 @@ class MainWindow(QMainWindow):
             else:
                 self.ax.set_xlim(self.default_xlim)
                 self.ax.set_ylim(self.default_ylim)
-            
+
+            if self.plot_update_pending:
+                return
+            self.plot_update_pending = True
+            QTimer.singleShot(30, self.debounce_plot_update)
+
             self.table_canvas.draw_idle()
         except Exception as e:
             pass
@@ -594,11 +576,9 @@ class MainWindow(QMainWindow):
 
     def update_target_position(self, x, y):
         try:
-            x = float(x)
-            y = float(y)
-            self.target_position = (x, y)
-            self.plot_updater.value = 0
-            self.plot_updater.initial = False
+            self.pending_target = (float(x), float(y))
+            if not self.target_update_timer.isActive():
+                self.target_update_timer.start()
         except Exception as e:
             pass
 
@@ -608,11 +588,9 @@ class MainWindow(QMainWindow):
             controller = self.scanner.scanner.motion_controller
             driver = controller._driver
             
-            # Fix number_of_axes if invalid
             if hasattr(driver, 'number_of_axes') and driver.number_of_axes.value == 0:
                 driver.number_of_axes.value = 3
             
-            # Ensure port is valid
             if hasattr(driver, 'port') and driver.port.value < 1024:
                 driver.port.value = 5555
             
@@ -633,7 +611,6 @@ class MainWindow(QMainWindow):
             controller = self.scanner.scanner.probe_controller
             probe = controller._probe
             
-            # Ensure probe has necessary settings
             if not hasattr(probe, 'settings_pre_connect'):
                 probe.settings_pre_connect = []
             if not hasattr(probe, 'settings_post_connect'):
@@ -718,6 +695,15 @@ class MainWindow(QMainWindow):
             self.plot_updater.initial = False
         except Exception as e:
             pass
+
+    def update_target_plot(self):
+        if self.pending_target is not None:
+            self.target_position = self.pending_target
+            self.update_table_plot(0, initial=False)
+            self.pending_target = None
+        if not self.target_update_timer.isActive():
+            self.target_update_timer.start()
+        self.target_update_timer.stop()
 
     def configure_file(self):
         try:
@@ -894,6 +880,7 @@ class MainWindow(QMainWindow):
             pass
 
     @Slot(int, tuple, list)
+    @Slot(int, tuple, list)
     def update_data_plot(self, index, position, data):
         try:
             if data:
@@ -903,17 +890,19 @@ class MainWindow(QMainWindow):
             fig.clear()
             ax = fig.add_subplot(111)
             
-            fig.subplots_adjust(left=0.3, right=0.95, top=0.95, bottom=0.25)
+            fig.subplots_adjust(left=0.15, right=0.75, top=0.9, bottom=0.25)
             
             probe = self.scanner.scanner.probe_controller._probe
             if hasattr(probe, 'get_xaxis_coords'):
                 freqs = probe.get_xaxis_coords()
                 for pos, data_point in self.scan_data:
                     for i, channel_data in enumerate(data_point):
-                        ax.plot(freqs, channel_data, label=f"Ch {i+1} ({pos[0]:.1f}, {pos[1]:.1f})")
-                ax.legend(bbox_to_anchor=(1.05, 1), loc='upper left', fontsize='small')
-                ax.set_xlabel(f"Frequency ({probe.get_xaxis_units()})")
-                ax.set_ylabel("Amplitude")
+                        ax.plot(freqs, channel_data, linewidth=0.8)
+
+                ax.set_xlabel("") 
+                ax.set_ylabel("") 
+                
+                ax.tick_params(axis='both', labelsize=6)  
             
             self.data_canvas.draw_idle()
         except Exception as e:
