@@ -2,12 +2,15 @@ import sys
 import numpy as np
 import time
 import traceback
+import os
+import datetime
+import pickle
 from PySide6.QtCore import QTimer, Slot, Qt, QThread, Signal
 from PySide6.QtGui import QCloseEvent, QMouseEvent, QWheelEvent, QPainter, QPen, QPaintEvent
 from PySide6.QtWidgets import (QApplication, QMainWindow, QPushButton, 
                               QVBoxLayout, QWidget, QMessageBox, QFormLayout,
                               QDoubleSpinBox, QComboBox, QLabel, QGroupBox,
-                              QSizePolicy, QScrollArea, QSpinBox)
+                              QSizePolicy, QScrollArea, QSpinBox, QFileDialog)
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 from gui.scanner_qt import ScannerQt
@@ -15,6 +18,8 @@ from gui.ui_scanner import Ui_MainWindow
 from gui.qt_util import QPluginSetting
 from scanner.plugin_setting import PluginSettingString, PluginSettingFloat, PluginSettingInteger
 from scanner.probe_simulator import ProbeSimulator
+from exportScan import export_scan
+from importScan import import_scan
 
 class PlotUpdater(QThread):
     update_signal = Signal(float, bool)
@@ -94,7 +99,7 @@ class ScanThread(QThread):
     scan_finished = Signal()
     scan_error = Signal(str)
     update_target = Signal(float, float)
-    update_data = Signal(int, tuple, list)
+    data_point = Signal(int, tuple, list)
 
     def __init__(self, scanner, scan_order, x_dim, y_dim, x_step, y_step, start_position):
         super().__init__()
@@ -166,8 +171,8 @@ class ScanThread(QThread):
                     while self.scanner.motion_controller.is_moving():
                         QThread.msleep(10)
 
-                    data = self.scanner.probe_controller.scan_read_measurement(0, (x, y))
-                    self.update_data.emit(0, (x, y), data)
+                    datum = self.scanner.probe_controller.scan_read_measurement(0, (x, y))
+                    self.data_point.emit(0, (x, y), datum)
 
             self.scan_finished.emit()
         except (ConnectionError, TimeoutError, ValueError) as e:
@@ -214,6 +219,7 @@ class MainWindow(QMainWindow):
         self.last_mouse_pos = None
         self.last_positions = (0.0, 0.0, 0.0)
         self.plot_update_pending = False
+        self.temp_scan_file = None
         self.scan_data = []
 
         self.setup_configuration_area()
@@ -708,9 +714,189 @@ class MainWindow(QMainWindow):
     def configure_file(self):
         try:
             self.clear_config_layout()
-            QMessageBox.information(self, "Info", "File configuration placeholder")
+            
+            group_box = QGroupBox("Scan File Options")
+            layout = QFormLayout()
+
+            exportBtn = QPushButton("Export scan")
+            exportBtn.clicked.connect(self.export_scan_data)
+            importBtn = QPushButton("Import scan")
+            importBtn.clicked.connect(self.import_scan_data)
+            recoverBtn = QPushButton("Recover Aborted Scan")
+            recoverBtn.clicked.connect(self.recover_scan_data)
+
+            layout.addRow(exportBtn)
+            layout.addRow(importBtn)
+            layout.addRow(recoverBtn)
+            group_box.setLayout(layout)
+            self.config_layout.addWidget(group_box)
+            self.config_layout.addStretch()
+
         except Exception as e:
-            pass
+            QMessageBox.critical(self, "Error", f"File config error: {str(e)}")
+
+    def export_scan_data(self):
+        if not self.scan_data:
+            QMessageBox.information(self, "Export Scan", "No scan data to export.")
+            return
+
+        try:
+            # Get unique x and y coordinates from the collected data
+            all_coords = np.array([item[0] for item in self.scan_data])
+            x_coords = np.unique(all_coords[:, 0])
+            y_coords = np.unique(all_coords[:, 1])
+
+            # Get frequency vector
+            try:
+                probe = self.scanner.scanner.probe_controller._probe
+                freqs = probe.get_xaxis_coords()
+                if freqs is None or len(freqs) == 0:
+                    raise ValueError("Probe returned empty frequency vector.")
+            except Exception:
+                first_data_point_channels = self.scan_data[0][1]
+                num_freqs = len(first_data_point_channels[0])
+                freqs = np.arange(num_freqs, dtype=np.float64)
+                QMessageBox.warning(self, "Export Warning", "Could not get frequency vector from probe. Using indices as frequencies.")
+
+            # Determine dimensions
+            Nx = len(x_coords)
+            Ny = len(y_coords)
+            Nf = len(freqs)
+            Nc = len(self.scan_data[0][1])  # Number of channels from first data point
+
+            # Check for complex data
+            first_point_data = np.array(self.scan_data[0][1])
+            is_complex = np.iscomplexobj(first_point_data)
+            
+            # Create data array for uniform scan. Shape for exportScan is (Nx, Ny, Nf, Nc)
+            data_grid = np.zeros((Nx, Ny, Nf, Nc), dtype=np.complex128 if is_complex else np.float64)
+
+            # Create a map from coordinate to index for faster lookup
+            x_map = {val: i for i, val in enumerate(x_coords)}
+            y_map = {val: i for i, val in enumerate(y_coords)}
+
+            # Populate the data grid
+            for (x, y), point_data_channels in self.scan_data:
+                ix = x_map.get(x)
+                iy = y_map.get(y)
+                if ix is not None and iy is not None:
+                    # point_data_channels has shape (Nc, Nf)
+                    # We need to transpose it to (Nf, Nc) to fit the slice
+                    data_grid[ix, iy, :, :] = np.array(point_data_channels).T
+
+            # Prepare arguments for export_scan
+            axis_coordinates = [x_coords, y_coords]
+            
+            # Prepare header
+            now = datetime.datetime.now()
+            header_info = {
+                'header': f"User: {os.getlogin()}, Date: {now.strftime('%Y-%m-%d %H:%M:%S')}",
+                'description': f"Scan Pattern: {self.scan_order.value}, "
+                               f"Dimensions: {self.x_dim.value}x{self.y_dim.value} mm, "
+                               f"Step: {self.x_step.value}x{self.y_step.value} mm, "
+                               f"Start: {self.start_position}",
+                'device_name': self.scanner.scanner.probe_controller.get_name(),
+                'channel_names': [f"Channel {i+1}" for i in range(Nc)]
+            }
+
+            # Call export function from exportScan.py
+            # Pass filename_in=None to trigger the file save dialog
+            export_scan(
+                axis_coordinates=axis_coordinates,
+                f_vector=freqs,
+                data=data_grid,
+                header_in=header_info,
+                is_uniform=True,
+                filename_in=None
+            )
+            # The export_scan function prints its own success/cancel message to the console.
+
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Export scan error: {str(e)}\n{traceback.format_exc()}")
+            return
+
+    def import_scan_data(self):
+        try:
+            # This function returns a tuple: (*coords, f, data, header)
+            scan_result = import_scan()
+            if scan_result is None: # User cancelled
+                return
+            
+            # Unpack the results. The number of coords can vary.
+            *coords, f_vector, data_grid, header = scan_result
+            is_uniform = header.get('is_uniform', True)
+
+            imported_scan_data = []
+            if not is_uniform:
+                # For non-uniform, data is (Npoints, Nf, Nc). Coords are lists of points.
+                x_coords, y_coords = coords[0], coords[1]
+                num_points, num_freqs, num_channels = data_grid.shape
+                for i in range(num_points):
+                    pos = (x_coords[i], y_coords[i])
+                    # Gather all channel data for this point
+                    point_data_channels = [data_grid[i, :, c] for c in range(num_channels)]
+                    imported_scan_data.append((pos, point_data_channels))
+            else: # Uniform scan
+                # For uniform, data is (Nx, Ny, Nf, Nc). Coords are unique axes.
+                x_coords, y_coords = coords[0], coords[1]
+                Nx, Ny, Nf, Nc = data_grid.shape
+                for ix, x in enumerate(x_coords):
+                    for iy, y in enumerate(y_coords):
+                        pos = (x, y)
+                        # Get the data for this point: shape (Nf, Nc)
+                        point_data_slice = data_grid[ix, iy, :, :]
+                        # Convert it to a list of channel arrays, shape (Nc, Nf)
+                        point_data_channels = [point_data_slice[:, c] for c in range(Nc)]
+                        imported_scan_data.append((pos, point_data_channels))
+            
+            self.scan_data = imported_scan_data
+            self.update_data_plot()
+            QMessageBox.information(self, "Success", f"Successfully imported {len(self.scan_data)} data points.")
+
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Import scan error: {str(e)}\n{traceback.format_exc()}")
+            return
+
+    def recover_scan_data(self):
+        temp_dir = os.path.join(os.getcwd(), "temp_scans")
+        os.makedirs(temp_dir, exist_ok=True)
+
+        filename, _ = QFileDialog.getOpenFileName(
+            self,
+            "Recover Aborted Scan",
+            temp_dir,
+            "Recovery Files (*.pkl);;All Files (*)"
+        )
+
+        if not filename:
+            return
+
+        recovered_data = []
+        try:
+            with open(filename, 'rb') as f:
+                while True:
+                    try:
+                        data_point = pickle.load(f)
+                        recovered_data.append(data_point)
+                    except EOFError:
+                        break
+        except pickle.UnpicklingError as e:
+            QMessageBox.critical(self, "Recovery Error", f"Failed to load recovery file. It may be corrupted.\n\n{e}")
+            return
+        except Exception as e:
+            QMessageBox.critical(self, "Recovery Error", f"An unexpected error occurred while reading the file.\n\n{e}")
+            return
+
+        if not recovered_data:
+            QMessageBox.information(self, "Recovery", "The selected recovery file is empty or invalid.")
+            return
+
+        self.scan_data = recovered_data
+        self.update_data_plot()
+
+        QMessageBox.information(self, "Success", 
+            f"Successfully recovered {len(self.scan_data)} data points.\n"
+            "You can now use the 'Export Scan' button to save the data to a standard .scan file.")
 
     def set_configuration_settings(self, plugin, connected, connect_func, disconnect_func):
         try:
@@ -847,6 +1033,13 @@ class MainWindow(QMainWindow):
             
             self.ui.start_scan_button.setEnabled(False)
             self.scan_data = []
+
+            temp_dir = "temp_scans"
+            os.makedirs(temp_dir, exist_ok=True)
+            now = datetime.datetime.now()
+            filename = f"scan_recovery_{now.strftime('%Y%m%d_%H%M%S')}.pkl"
+            self.temp_scan_file = os.path.join(temp_dir, filename)
+
             self.data_canvas.figure.clear()
             self.data_canvas.draw_idle()
             
@@ -862,7 +1055,7 @@ class MainWindow(QMainWindow):
             self.scan_thread.scan_finished.connect(self.handle_scan_finished, Qt.ConnectionType.QueuedConnection)
             self.scan_thread.scan_error.connect(self.handle_scan_error, Qt.ConnectionType.QueuedConnection)
             self.scan_thread.update_target.connect(self.update_target_position, Qt.ConnectionType.QueuedConnection)
-            self.scan_thread.update_data.connect(self.update_data_plot, Qt.ConnectionType.QueuedConnection)
+            self.scan_thread.data_point.connect(self.scan_data_collector, Qt.ConnectionType.QueuedConnection)
             self.scanner.scanner.set_update_target_callback(self.update_target_position)
             self.scanner.scanner.set_update_data_callback(self.emit_scan_data)
             self.scan_thread.start()
@@ -875,43 +1068,74 @@ class MainWindow(QMainWindow):
 
     def emit_scan_data(self, index, position, data):
         try:
-            self.scan_thread.update_data.emit(index, position, data)
+            self.scan_thread.data_point.emit(index, position, data)
         except Exception as e:
             pass
 
     @Slot(int, tuple, list)
     @Slot(int, tuple, list)
-    def update_data_plot(self, index, position, data):
+    def scan_data_collector(self, index, position, data):
         try:
             if data:
                 self.scan_data.append((position, data))
+
+                if self.temp_scan_file:
+                    try:
+                        with open(self.temp_scan_file, 'ab') as f:
+                            pickle.dump((position, data), f)
+                    except Exception as e:
+                        print(f"Warning: Could not write to temporary scan file: {e}")
+                        self.temp_scan_file = None # Stop trying to write for this scan
             
+            self.update_data_plot()
+        except Exception as e:
+            pass
+
+    def update_data_plot(self):
+        try:
+            if not self.scan_data:
+                self.data_canvas.figure.clear()
+                self.data_canvas.draw_idle()
+                return
+
             fig = self.data_canvas.figure
             fig.clear()
             ax = fig.add_subplot(111)
-            
             fig.subplots_adjust(left=0.15, right=0.75, top=0.9, bottom=0.25)
-            
-            probe = self.scanner.scanner.probe_controller._probe
-            if hasattr(probe, 'get_xaxis_coords'):
-                freqs = probe.get_xaxis_coords()
-                for pos, data_point in self.scan_data:
-                    for i, channel_data in enumerate(data_point):
-                        ax.plot(freqs, channel_data, linewidth=0.8)
 
-                ax.set_xlabel("") 
-                ax.set_ylabel("") 
-                
-                ax.tick_params(axis='both', labelsize=6)  
+            probe = self.scanner.scanner.probe_controller._probe
+            try:
+                freqs = probe.get_xaxis_coords()
+                if freqs is None or len(freqs) == 0: raise ValueError()
+                xlabel = f"Frequency ({probe.get_xaxis_units()})"
+            except Exception:
+                first_data_point_channels = self.scan_data[0][1]
+                num_freqs = len(first_data_point_channels[0])
+                freqs = np.arange(num_freqs)
+                xlabel = "Frequency (index)"
+
+            for pos, data_point in self.scan_data:
+                for i, channel_data in enumerate(data_point):
+                    ax.plot(freqs, channel_data, linewidth=0.8)
+
+            ax.set_xlabel(xlabel, fontsize=8) 
+            ax.set_ylabel("Amplitude", fontsize=8) 
+            ax.tick_params(axis='both', labelsize=6)  
             
             self.data_canvas.draw_idle()
         except Exception as e:
-            pass
+            print(f"Warning: Failed to update data plot: {e}")
 
     @Slot()
     def handle_scan_finished(self):
         try:
             self.ui.start_scan_button.setEnabled(True)
+            if self.temp_scan_file and os.path.exists(self.temp_scan_file):
+                try:
+                    os.remove(self.temp_scan_file)
+                except OSError as e:
+                    print(f"Warning: Could not remove temporary scan file: {e}")
+            self.temp_scan_file = None
         except Exception as e:
             pass
 
@@ -919,7 +1143,12 @@ class MainWindow(QMainWindow):
     def handle_scan_error(self, error_message):
         try:
             self.ui.start_scan_button.setEnabled(True)
-            QMessageBox.critical(self, "Error", f"Failed to run scan: {error_message}")
+            error_text = f"Failed to run scan: {error_message}"
+            if self.temp_scan_file and os.path.exists(self.temp_scan_file) and os.path.getsize(self.temp_scan_file) > 0:
+                error_text += f"\n\nPartial scan data saved to:\n{os.path.abspath(self.temp_scan_file)}"
+            
+            self.temp_scan_file = None
+            QMessageBox.critical(self, "Error", error_text)
         except Exception as e:
             pass
 
