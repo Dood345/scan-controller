@@ -71,7 +71,3 @@ This project includes tests for the scanner command and GUI. To run the tests, e
 python test_scanner_command.py
 python test_scanner_gui.py
 ```
-
-## License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
